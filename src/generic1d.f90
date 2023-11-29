@@ -38,12 +38,7 @@ module generic1d
         procedure :: get_potential
         procedure :: add_input
         procedure :: add_output
-        procedure :: destructor => node_1d_destructor
     end type node_1d
-
-    interface node_1d
-        procedure :: node_1d_constructor
-    end interface
 
 contains
 
@@ -62,6 +57,13 @@ contains
 
         discrepancy = sum(get_flows(this%inputs)) - sum(get_flows(this%outputs))
     end function flow_balance
+
+    elemental function flow_balances(nodes) result(discreps)
+        type(node_1d), intent(in) :: nodes
+        real(dp) :: discreps
+
+        discreps = nodes%flow_balance()
+    end function flow_balances
 
     ! Procedure for getting the potential of a node INCLUDING any
     ! step value applied by an attached element.
@@ -86,8 +88,12 @@ contains
         tmp(1:isize) = this%inputs(:)
         tmp(isize + 1) = newbox
 
-        deallocate(this%inputs)
-        allocate(this%inputs(isize + 1))
+        if (allocated(this%inputs)) then
+            deallocate(this%inputs)
+            allocate(this%inputs(isize + 1))
+        else 
+            allocate(this%inputs(1))
+        end if
 
         this%inputs(:) = tmp(:)
     end subroutine add_input
@@ -106,25 +112,14 @@ contains
         tmp(1:osize) = this%outputs(:)
         tmp(osize + 1) = newbox
 
-        deallocate(this%outputs)
-        allocate(this%outputs(osize + 1))
+        if (allocated(this%outputs)) then
+            deallocate(this%outputs)
+            allocate(this%outputs(osize + 1))
+        else 
+            allocate(this%outputs(1))
+        end if
 
         this%outputs(:) = tmp(:)
     end subroutine add_output
-
-    ! Destructor for node_1d to deallocate inputs/outputs
-    subroutine node_1d_destructor(this)
-        class(node_1d), intent(inout) :: this
-
-        deallocate(this%inputs, this%outputs)
-    end subroutine node_1d_destructor
-
-    ! Constructor function for node to auto-alloc inputs/outputs
-    function node_1d_constructor() result(this)
-        type(node_1d) :: this
-
-        allocate(this%inputs(0))
-        allocate(this%outputs(0))
-    end function node_1d_constructor
 
 end module generic1d
